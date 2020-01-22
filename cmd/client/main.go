@@ -3,16 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/jiho-dev/rpc"
 	"log"
-	//"rpc"
-	//"net/rpc"
-	"github.com/keegancsmith/rpc"
 )
 
 var name string = "Omar"
 
 func main() {
-	client, err := rpc.Dial("tcp", "127.0.0.1:8080")
+	client, err := rpc.Dial("tcp", "127.0.0.1:8899")
 	if err != nil {
 		log.Println(err)
 		return
@@ -24,5 +22,6 @@ func main() {
 		log.Println(err)
 		return
 	}
+
 	fmt.Printf("%s\n", reply)
 }

@@ -1,3 +1,5 @@
-module github.com/keegancsmith/rpc
+module github.com/jiho-dev/rpc
 
 go 1.12
+
+require github.com/google/uuid v1.1.1

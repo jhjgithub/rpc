@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -16,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/keegancsmith/rpc/internal/svc"
+	"github.com/jiho-dev/rpc/internal/svc"
 )
 
 // ServerError represents an error that has been returned from
@@ -66,7 +67,8 @@ type Client struct {
 // discarded.
 // See NewClient's comment for information about concurrent access.
 type ClientCodec interface {
-	WriteRequest(*Request, interface{}) error
+	WriteRequest(*RpcHdr, *Request, interface{}) error
+	ReadRpcHeader(h *RpcHdr) error
 	ReadResponseHeader(*Response) error
 	ReadResponseBody(interface{}) error
 
@@ -98,10 +100,12 @@ func (client *Client) send(call *Call) {
 	client.pending[seq] = call
 	client.mutex.Unlock()
 
+	hdr := NewRpcHeader(MSG_TYPE_REQUEST)
+
 	// Encode and send the request.
 	client.request.Seq = seq
 	client.request.ServiceMethod = call.ServiceMethod
-	err := client.codec.WriteRequest(&client.request, call.Args)
+	err := client.codec.WriteRequest(hdr, &client.request, call.Args)
 	if err != nil {
 		client.mutex.Lock()
 		call = client.pending[seq]
@@ -118,6 +122,24 @@ func (client *Client) input() {
 	var err error
 	var response Response
 	for err == nil {
+		var hdr RpcHdr
+
+		err = client.codec.ReadRpcHeader(&hdr)
+		if err != nil {
+			break
+		}
+
+		if hdr.MsgMagicCode != MSG_MAGIC_CODE {
+			err = fmt.Errorf("rpc: RPC Header Magic Code mismatched: Default magic: %x, Received magic: %x",
+				MSG_MAGIC_CODE, hdr.MsgMagicCode)
+		} else if hdr.MsgVerMajor != DEF_MSG_VER_MAJ || hdr.MsgVerMinor != DEF_MSG_VER_MIN {
+			err = fmt.Errorf("rpc: RPC Header Version mismatched: Default ver: %d:%d, Received ver: %d:%d",
+				DEF_MSG_VER_MAJ, DEF_MSG_VER_MIN, hdr.MsgVerMajor, hdr.MsgVerMinor)
+		} else if hdr.MsgType != MSG_TYPE_RESPONSE {
+			err = fmt.Errorf("rpc: Invalid Msg: %d, only can receive Response Msg", hdr.MsgType)
+			continue
+		}
+
 		response = Response{}
 		err = client.codec.ReadResponseHeader(&response)
 		if err != nil {
@@ -227,7 +249,10 @@ type gobClientCodec struct {
 	encBuf *bufio.Writer
 }
 
-func (c *gobClientCodec) WriteRequest(r *Request, body interface{}) (err error) {
+func (c *gobClientCodec) WriteRequest(hdr *RpcHdr, r *Request, body interface{}) (err error) {
+	if err = c.enc.Encode(hdr); err != nil {
+		return
+	}
 	if err = c.enc.Encode(r); err != nil {
 		return
 	}
@@ -237,6 +262,9 @@ func (c *gobClientCodec) WriteRequest(r *Request, body interface{}) (err error) 
 	return c.encBuf.Flush()
 }
 
+func (c *gobClientCodec) ReadRpcHeader(h *RpcHdr) error {
+	return c.dec.Decode(h)
+}
 func (c *gobClientCodec) ReadResponseHeader(r *Response) error {
 	return c.dec.Decode(r)
 }
