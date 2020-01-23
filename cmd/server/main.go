@@ -17,7 +17,7 @@ import (
 type Greeting string
 
 var myserver *rpc.Server
-var myconn *rpc.SvcConn
+var myconn *rpc.Connection
 
 func Test1(cname string) {
 	var reply string
@@ -62,7 +62,7 @@ func (g *Greeting) SayHello(ctx context.Context, name string, reply *string) err
 	return nil
 }
 
-func OnAccept(s *rpc.Server, c *rpc.SvcConn) bool {
+func OnAccept(s *rpc.Server, c *rpc.Connection) bool {
 
 	log.Printf("Got new client: %v, %v", s, c)
 

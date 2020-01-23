@@ -1,5 +1,5 @@
 
-TARGET=client server
+TARGET=client server biclient
 
 all: $(TARGET)
 
@@ -10,4 +10,8 @@ server:
 .PHONY: client
 client:
 	cd cmd/client; go build;
+
+.PHONY: biclient
+biclient:
+	cd cmd/biclient; go build;
 

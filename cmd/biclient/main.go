@@ -44,7 +44,7 @@ func main1() {
 	fmt.Printf("%s\n", reply)
 }
 
-func do_request(client *rpc.Server, conn *rpc.SvcConn, id int) {
+func do_request(client *rpc.Server, conn *rpc.Connection, id int) {
 	var reply string
 
 	s := strconv.FormatInt(int64(id), 10)
@@ -66,14 +66,14 @@ func do_request(client *rpc.Server, conn *rpc.SvcConn, id int) {
 func main2() {
 	greeting := new(Greeting)
 
-	client, conn, err := rpc.DialBiServer("tcp", "127.0.0.1:8899")
+	client, conn, err := rpc.DialBiClient("tcp", "127.0.0.1:8899")
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
 	client.RegisterName("Greeting", greeting)
-	client.RunBiService(conn)
+	client.RunBiClient(conn)
 
 	/*
 		var reply string
@@ -93,7 +93,7 @@ func main2() {
 
 	conn.Wg.Wait()
 	conn.Codec.Close()
-	client.SvcConns.Delete(conn.Id)
+	client.Conns.Delete(conn.Id)
 }
 
 func main() {
